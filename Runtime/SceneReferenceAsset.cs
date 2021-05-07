@@ -13,7 +13,7 @@ namespace CB.SceneSystem
         [SerializeField]
         private Object sceneAsset;
 
-        
+
         [SerializeField, HideInInspector]
         private string sceneName;
 

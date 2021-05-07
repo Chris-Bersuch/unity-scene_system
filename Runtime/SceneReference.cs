@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -8,32 +9,121 @@ namespace CB.SceneSystem
     [CreateAssetMenu (menuName = "CB/Scene System/Scene")]
     public class SceneReference : ScriptableObject
     {
+        #region Fields
+
         [Tooltip ("The scene name that will be loaded.")]
         [SerializeField]
         private SceneReferenceAsset scene;
+
+        [Tooltip ("The mode to load the scene.")]
+        [SerializeField]
+        private LoadSceneMode mode;
+
+        [Tooltip ("Is it possible to load this scene multiple times.")]
+        [SerializeField]
+        private bool allowDuplicate;
 
 
         /// <summary>
         /// The scene name to load.
         /// </summary>
-        public string Name
-        {
-            get
-            {
-                if (scene != null)
-                {
-                    return scene.Name;
-                }
-
-                return "Not_Set";
-            }
-        }
+        public string Name => scene?.Name;
 
 
         /// <summary>
-        /// Load this scene the given scene mode.
+        /// Returns true if this scene can be loaded multiple times.
         /// </summary>
-        public void LoadScene (LoadSceneMode mode)
+        public bool AllowDuplicate => mode == LoadSceneMode.Additive && allowDuplicate;
+
+        #endregion
+
+
+        #region Events
+
+        /// <summary>
+        /// Is called on scene load start. 
+        /// </summary>
+        public event Action OnSceneLoadStart;
+
+
+        /// <summary>
+        /// Is sequentially called while scene loading and returns the current progress. 
+        /// </summary>
+        public event Action<float> OnSceneLoading;
+
+
+        /// <summary>
+        /// Is called on scene load done. 
+        /// </summary>
+        public event Action OnSceneLoadDone;
+
+
+        /// <summary>
+        /// Is called on scene unload start. 
+        /// </summary>
+        public event Action OnSceneUnloadStart;
+
+
+        /// <summary>
+        /// Is sequentially called while scene unloading and returns the current progress. 
+        /// </summary>
+        public event Action<float> OnSceneUnloading;
+
+
+        /// <summary>
+        /// Is called on scene unload done. 
+        /// </summary>
+        public event Action OnSceneUnloadDone;
+
+        #endregion
+
+
+        #region Internal
+
+        internal void SceneLoadStart ()
+        {
+            OnSceneLoadStart?.Invoke ();
+        }
+
+
+        internal void SceneLoading (float progress)
+        {
+            OnSceneLoading?.Invoke (progress);
+        }
+
+
+        internal void SceneLoadDone ()
+        {
+            OnSceneLoadDone?.Invoke ();
+        }
+
+
+        internal void SceneUnloadStart ()
+        {
+            OnSceneUnloadStart?.Invoke ();
+        }
+
+
+        internal void SceneUnloading (float progress)
+        {
+            OnSceneUnloading?.Invoke (progress);
+        }
+
+
+        internal void SceneUnloadDone ()
+        {
+            OnSceneUnloadDone?.Invoke ();
+        }
+
+        #endregion
+
+
+        #region Public
+
+        /// <summary>
+        /// Load the scene with the load mode.
+        /// </summary>
+        public void Load ()
         {
             SceneSystem.LoadScene (this, mode);
         }
@@ -42,18 +132,9 @@ namespace CB.SceneSystem
         /// <summary>
         /// Unload all scenes and load this scene.
         /// </summary>
-        public void LoadSceneSingle ()
+        public void Unload ()
         {
-            LoadScene (LoadSceneMode.Single);
-        }
-
-
-        /// <summary>
-        /// Load this scene additive to all existing ones.
-        /// </summary>
-        public void LoadSceneAdditive ()
-        {
-            LoadScene (LoadSceneMode.Additive);
+            SceneSystem.UnloadScene (this);
         }
 
 
@@ -70,6 +151,8 @@ namespace CB.SceneSystem
         {
             return scene.Name;
         }
+
+        #endregion
     }
 
 }
