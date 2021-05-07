@@ -4,8 +4,14 @@
   "displayName": "Scriptable Scene-System",
   "description": "A ScriptableObject based scene system",
   "unity": "2019.4",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Chris-Bersuch/unity-scene_system.git"
+  },
   "unityRelease": "0b5",
   "keywords": [
+    "Unity3D",
+    "Unity",
     "Scene",
     "Scenes",
     "Scene System",
@@ -14,6 +20,6 @@
   "author": {
     "name": "Christopher Bersuch",
     "email": "christopher.bersuch@gmail.com",
-    "url": ""
+    "url": "https://github.com/Chris-Bersuch"
   }
 }
