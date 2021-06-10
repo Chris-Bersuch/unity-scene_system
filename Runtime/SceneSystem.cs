@@ -17,13 +17,6 @@ namespace CB.SceneSystem
     }
 
 
-    struct SceneLoadEntry
-    {
-        public SceneReference Scene;
-        public LoadSceneMode Mode;
-    }
-
-
     public class SceneSystem : MonoBehaviour
     {
         #region Singleton
@@ -200,11 +193,6 @@ namespace CB.SceneSystem
                 return;
             }
 
-            // instance.loadingQueue.Enqueue (new SceneLoadEntry
-            // {
-            //     Scene = scene,
-            //     Mode = mode
-            // });
             instance.StartCoroutine (instance.Load (scene, mode));
         }
 
@@ -225,7 +213,6 @@ namespace CB.SceneSystem
                 return;
             }
 
-            // instance.unloadingQueue.Enqueue (scene);
             instance.StartCoroutine (instance.Unload (scene));
         }
 
@@ -251,7 +238,7 @@ namespace CB.SceneSystem
 
             Scene s = SceneManager.GetSceneByName (scene);
 
-            if (s.IsValid ())
+            if (s.IsValid () && s.isLoaded)
             {
                 return SceneState.Loaded;
             }
