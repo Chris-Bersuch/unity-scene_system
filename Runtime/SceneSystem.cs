@@ -32,6 +32,8 @@ namespace CB.SceneSystem
                 {
                     GameObject go = new GameObject ("Scene System");
                     _instance = go.AddComponent<SceneSystem> ();
+                    SceneManager.sceneLoaded += _instance.OnSceneLoaded;
+                    SceneManager.sceneUnloaded += _instance.OnSceneUnloaded;
                     DontDestroyOnLoad (go);
                 }
 
@@ -90,7 +92,35 @@ namespace CB.SceneSystem
         #endregion
 
 
+        #region Unity
+
+        void OnDestroy ()
+        {
+            if (this == _instance)
+            {
+                SceneManager.sceneLoaded -= OnSceneLoaded;
+                SceneManager.sceneUnloaded -= OnSceneUnloaded;
+            }
+        }
+
+        #endregion
+
+
         #region Private
+
+        void OnSceneUnloaded (Scene scene)
+        {
+            Debug.Log ($"Unloaded the scene {scene.name}.");
+            unloadingScenes.Remove (scene.name);
+        }
+
+
+        void OnSceneLoaded (Scene scene, LoadSceneMode mode)
+        {
+            Debug.Log ($"Loaded the scene {scene.name} with mode {mode}.");
+            loadingScenes.Remove (scene.name);
+        }
+
 
         IEnumerator Load (SceneReference scene, LoadSceneMode mode)
         {
@@ -107,7 +137,8 @@ namespace CB.SceneSystem
                 }
             }
 
-            loadingScenes.Add (scene);
+            scene.State = SceneState.Loading;
+            loadingScenes.Add (scene.Name);
 
             Debug.Log ($"Start loading scene: {scene} with mode {mode}");
 
@@ -124,9 +155,7 @@ namespace CB.SceneSystem
                 yield return null;
             }
 
-            loadingScenes.Remove (scene);
-
-            Debug.Log ($"Scene {scene} loaded with mode {mode}");
+            scene.State = SceneState.Loaded;
 
             OnSceneLoadDone?.Invoke (scene);
             scene.SceneLoadDone ();
@@ -144,7 +173,8 @@ namespace CB.SceneSystem
                 yield break;
             }
 
-            unloadingScenes.Add (scene);
+            scene.State = SceneState.Unloading;
+            unloadingScenes.Add (scene.Name);
 
             Debug.Log ($"Start unloading scene: {scene}");
 
@@ -161,9 +191,7 @@ namespace CB.SceneSystem
                 yield return null;
             }
 
-            unloadingScenes.Remove (scene);
-
-            Debug.Log ($"Scene {scene} unloaded");
+            scene.State = SceneState.NotLoaded;
 
             OnSceneUnloadDone?.Invoke (scene);
             scene.SceneUnloadDone ();

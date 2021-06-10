@@ -25,6 +25,12 @@ namespace CB.SceneSystem
         /// </summary>
         public string Name => scene?.Name;
 
+        
+        /// <summary>
+        /// The current state of this scene reference.
+        /// </summary>
+        public SceneState State { get; internal set; } = SceneState.NotLoaded;
+        
         #endregion
 
 
