@@ -19,21 +19,11 @@ namespace CB.SceneSystem
         [SerializeField]
         private LoadSceneMode mode;
 
-        [Tooltip ("Is it possible to load this scene multiple times.")]
-        [SerializeField]
-        private bool allowDuplicate;
-
 
         /// <summary>
         /// The scene name to load.
         /// </summary>
         public string Name => scene?.Name;
-
-
-        /// <summary>
-        /// Returns true if this scene can be loaded multiple times.
-        /// </summary>
-        public bool AllowDuplicate => mode == LoadSceneMode.Additive && allowDuplicate;
 
         #endregion
 

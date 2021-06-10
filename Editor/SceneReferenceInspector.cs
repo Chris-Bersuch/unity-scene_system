@@ -11,14 +11,12 @@ namespace CB.SceneSystem.Editor
     {
         private SerializedProperty scene;
         private SerializedProperty mode;
-        private SerializedProperty allowDuplicate;
 
 
         void OnEnable ()
         {
             scene = serializedObject.FindProperty ("scene");
             mode = serializedObject.FindProperty ("mode");
-            allowDuplicate = serializedObject.FindProperty ("allowDuplicate");
         }
 
 
@@ -29,16 +27,10 @@ namespace CB.SceneSystem.Editor
             EditorGUILayout.PropertyField (scene);
             EditorGUILayout.PropertyField (mode);
 
-            if ((LoadSceneMode) mode.enumValueIndex == LoadSceneMode.Additive)
-            {
-                EditorGUILayout.Space ();
-                EditorGUILayout.PropertyField (allowDuplicate);
-            }
-
             serializedObject.ApplyModifiedProperties ();
 
             // Gui to execute scene loading inside the editor.
-            if (Application.isPlaying)
+            GUI.enabled = Application.isPlaying;
             {
                 EditorGUILayout.Space (50);
 
@@ -66,6 +58,7 @@ namespace CB.SceneSystem.Editor
 
                 EditorGUILayout.EndHorizontal ();
             }
+            GUI.enabled = true;
         }
     }
 

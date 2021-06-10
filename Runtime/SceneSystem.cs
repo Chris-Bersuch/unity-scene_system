@@ -1,11 +1,28 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 
 namespace CB.SceneSystem
 {
+
+    public enum SceneState
+    {
+        NotLoaded,
+        Loaded,
+        Loading,
+        Unloading
+    }
+
+
+    struct SceneLoadEntry
+    {
+        public SceneReference Scene;
+        public LoadSceneMode Mode;
+    }
+
 
     public class SceneSystem : MonoBehaviour
     {
@@ -28,6 +45,14 @@ namespace CB.SceneSystem
                 return _instance;
             }
         }
+
+        #endregion
+
+
+        #region Fields
+
+        private List<string> loadingScenes = new List<string> ();
+        private List<string> unloadingScenes = new List<string> ();
 
         #endregion
 
@@ -79,32 +104,36 @@ namespace CB.SceneSystem
             // Check duplicate loading only in additive loading mode.
             if (mode == LoadSceneMode.Additive)
             {
-                if (!scene.AllowDuplicate)
+                SceneState state = GetSceneState (scene);
+
+                if (state == SceneState.Loaded || state == SceneState.Loading)
                 {
-                    Scene s = SceneManager.GetSceneByName (scene.Name);
+                    Debug.LogWarning ($"Error while loading the scene {scene}. This scene cannot be loaded multiple times.");
 
-                    // Is the scene already loaded?
-                    if (s.IsValid ())
-                    {
-                        Debug.LogError ($"Error while loading the scene {scene}. This scene cannot be loaded multiple times.");
-
-                        yield break;
-                    }
+                    yield break;
                 }
             }
+
+            loadingScenes.Add (scene);
+
+            Debug.Log ($"Start loading scene: {scene} with mode {mode}");
 
             OnSceneLoadStart?.Invoke (scene);
             scene.SceneLoadStart ();
 
             AsyncOperation load = SceneManager.LoadSceneAsync (scene.Name, mode);
 
-            while (!load.isDone)
+            while (load != null && !load.isDone)
             {
                 OnSceneLoading?.Invoke (scene, load.progress);
                 scene.SceneLoading (load.progress);
 
                 yield return null;
             }
+
+            loadingScenes.Remove (scene);
+
+            Debug.Log ($"Scene {scene} loaded with mode {mode}");
 
             OnSceneLoadDone?.Invoke (scene);
             scene.SceneLoadDone ();
@@ -113,27 +142,35 @@ namespace CB.SceneSystem
 
         IEnumerator Unload (SceneReference scene)
         {
-            Scene s = SceneManager.GetSceneByName (scene.Name);
+            SceneState state = GetSceneState (scene);
 
-            if (!s.IsValid ())
+            if (state != SceneState.Loaded)
             {
-                Debug.LogError ($"Error while unloading the scene {scene}. The given scene is not loaded!");
+                Debug.LogWarning ($"Error while unloading the scene {scene}. The given scene is not loaded!");
 
                 yield break;
             }
+
+            unloadingScenes.Add (scene);
+
+            Debug.Log ($"Start unloading scene: {scene}");
 
             OnSceneUnloadStart?.Invoke (scene);
             scene.SceneUnloadStart ();
 
             AsyncOperation unload = SceneManager.UnloadSceneAsync (scene.Name);
 
-            while (!unload.isDone)
+            while (unload != null && !unload.isDone)
             {
                 OnSceneUnloading?.Invoke (scene, unload.progress);
                 scene.SceneUnloading (unload.progress);
 
                 yield return null;
             }
+
+            unloadingScenes.Remove (scene);
+
+            Debug.Log ($"Scene {scene} unloaded");
 
             OnSceneUnloadDone?.Invoke (scene);
             scene.SceneUnloadDone ();
@@ -163,6 +200,11 @@ namespace CB.SceneSystem
                 return;
             }
 
+            // instance.loadingQueue.Enqueue (new SceneLoadEntry
+            // {
+            //     Scene = scene,
+            //     Mode = mode
+            // });
             instance.StartCoroutine (instance.Load (scene, mode));
         }
 
@@ -183,7 +225,38 @@ namespace CB.SceneSystem
                 return;
             }
 
+            // instance.unloadingQueue.Enqueue (scene);
             instance.StartCoroutine (instance.Unload (scene));
+        }
+
+        #endregion
+
+
+        #region Public
+
+        /// <summary>
+        /// Returns the current state of the given scene.
+        /// </summary>
+        public static SceneState GetSceneState (SceneReference scene)
+        {
+            if (instance.unloadingScenes.Contains (scene))
+            {
+                return SceneState.Unloading;
+            }
+
+            if (instance.loadingScenes.Contains (scene))
+            {
+                return SceneState.Loading;
+            }
+
+            Scene s = SceneManager.GetSceneByName (scene);
+
+            if (s.IsValid ())
+            {
+                return SceneState.Loaded;
+            }
+
+            return SceneState.NotLoaded;
         }
 
         #endregion

@@ -55,7 +55,8 @@ namespace CB.SceneSystem.Editor
             serializedObject.ApplyModifiedProperties ();
 
             // Gui to execute scene loading inside the editor.
-            if (Application.isPlaying)
+            GUI.enabled = Application.isPlaying;
+
             {
                 EditorGUILayout.Space (50);
 
@@ -83,6 +84,8 @@ namespace CB.SceneSystem.Editor
 
                 EditorGUILayout.EndHorizontal ();
             }
+
+            GUI.enabled = true;
         }
     }
 
