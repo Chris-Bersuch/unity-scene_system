@@ -19,18 +19,44 @@ namespace CB.SceneSystem
         [SerializeField]
         private LoadSceneMode mode;
 
+        [Tooltip ("If set to true this scene will be added to the history.")]
+        [SerializeField]
+        private bool addToHistory = true;
+
+        [Tooltip ("If set to true the scene history will be cleared on load.")]
+        [SerializeField]
+        private bool clearHistoryOnLoad;
+
 
         /// <summary>
         /// The scene name to load.
         /// </summary>
         public string Name => scene?.Name;
 
-        
+
+        /// <summary>
+        /// The mode to load the scene.
+        /// </summary>
+        public LoadSceneMode Mode => mode;
+
+
+        /// <summary>
+        /// Returns true if this scene will be added to the scene history.
+        /// </summary>
+        public bool AddToHistory => mode == LoadSceneMode.Single && addToHistory;
+
+
+        /// <summary>
+        /// Returns true if the scene history will be cleared on loading this scene.
+        /// </summary>
+        public bool ClearHistoryOnLoad => mode == LoadSceneMode.Single && clearHistoryOnLoad;
+
+
         /// <summary>
         /// The current state of this scene reference.
         /// </summary>
         public SceneState State { get; internal set; } = SceneState.NotLoaded;
-        
+
         #endregion
 
 
@@ -121,7 +147,22 @@ namespace CB.SceneSystem
         /// </summary>
         public void Load ()
         {
-            SceneSystem.LoadScene (this, mode);
+            Load (ClearHistoryOnLoad, AddToHistory);
+        }
+
+
+        /// <summary>
+        /// Load the scene with the load mode.
+        /// </summary>
+        public void Load (bool clearHistory, bool addHistory)
+        {
+            // prevent the creation of the SceneSystem in Edit mode. 
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+            
+            SceneSystem.instance.LoadScene (this, mode, clearHistory, addHistory);
         }
 
 
@@ -130,7 +171,13 @@ namespace CB.SceneSystem
         /// </summary>
         public void Unload ()
         {
-            SceneSystem.UnloadScene (this);
+            // prevent the creation of the SceneSystem in Edit mode. 
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+            
+            SceneSystem.instance.UnloadScene (this);
         }
 
 

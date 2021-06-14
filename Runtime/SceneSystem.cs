@@ -24,7 +24,7 @@ namespace CB.SceneSystem
         private static SceneSystem _instance;
 
 
-        private static SceneSystem instance
+        internal static SceneSystem instance
         {
             get
             {
@@ -48,6 +48,8 @@ namespace CB.SceneSystem
 
         private List<string> loadingScenes = new List<string> ();
         private List<string> unloadingScenes = new List<string> ();
+        private SceneReference startScene;
+        private List<SceneReference> history = new List<SceneReference> ();
 
         #endregion
 
@@ -122,25 +124,12 @@ namespace CB.SceneSystem
         }
 
 
-        IEnumerator Load (SceneReference scene, LoadSceneMode mode)
+        IEnumerator LoadAsync (SceneReference scene, LoadSceneMode mode)
         {
-            // Check duplicate loading only in additive loading mode.
-            if (mode == LoadSceneMode.Additive)
-            {
-                SceneState state = GetSceneState (scene);
-
-                if (state == SceneState.Loaded || state == SceneState.Loading)
-                {
-                    Debug.LogWarning ($"Error while loading the scene {scene}. This scene cannot be loaded multiple times.");
-
-                    yield break;
-                }
-            }
+            Debug.Log ($"Start loading scene: {scene} with mode {mode}");
 
             scene.State = SceneState.Loading;
             loadingScenes.Add (scene.Name);
-
-            Debug.Log ($"Start loading scene: {scene} with mode {mode}");
 
             OnSceneLoadStart?.Invoke (scene);
             scene.SceneLoadStart ();
@@ -162,21 +151,12 @@ namespace CB.SceneSystem
         }
 
 
-        IEnumerator Unload (SceneReference scene)
+        IEnumerator UnloadAsync (SceneReference scene)
         {
-            SceneState state = GetSceneState (scene);
-
-            if (state != SceneState.Loaded)
-            {
-                Debug.LogWarning ($"Error while unloading the scene {scene}. The given scene is not loaded!");
-
-                yield break;
-            }
+            Debug.Log ($"Start unloading scene: {scene}");
 
             scene.State = SceneState.Unloading;
             unloadingScenes.Add (scene.Name);
-
-            Debug.Log ($"Start unloading scene: {scene}");
 
             OnSceneUnloadStart?.Invoke (scene);
             scene.SceneUnloadStart ();
@@ -197,6 +177,50 @@ namespace CB.SceneSystem
             scene.SceneUnloadDone ();
         }
 
+
+        void AddToHistory (SceneReference scene)
+        {
+            if (scene.Mode == LoadSceneMode.Single)
+            {
+                if (scene == startScene)
+                {
+                    if (history.Count > 0 && history[0] == scene)
+                    {
+                        // Do not add the start scene twice.
+                        return;
+                    }
+                }
+
+                Debug.Log ($"Scene {scene} was added to the history");
+                history.Add (scene);
+            }
+        }
+
+
+        void ClearSceneHistory ()
+        {
+            Debug.Log ("Scene history cleared");
+            history.Clear ();
+
+            if (startScene)
+            {
+                history.Add (startScene);
+            }
+        }
+
+        #endregion
+
+
+        #region Public
+
+        /// <summary>
+        /// Returns the history of the scene loading.
+        /// </summary>
+        public SceneReference[] GetSceneHistory ()
+        {
+            return history.ToArray ();
+        }
+
         #endregion
 
 
@@ -205,7 +229,7 @@ namespace CB.SceneSystem
         /// <summary>
         /// Load the given scene with the given scene mode.
         /// </summary>
-        internal static void LoadScene (SceneReference scene, LoadSceneMode mode)
+        internal void LoadScene (SceneReference scene, LoadSceneMode mode, bool clearHistory, bool addToHistory)
         {
             if (scene == null)
             {
@@ -221,11 +245,37 @@ namespace CB.SceneSystem
                 return;
             }
 
-            instance.StartCoroutine (instance.Load (scene, mode));
+            // Check duplicate loading only in additive loading mode.
+            if (mode == LoadSceneMode.Additive)
+            {
+                SceneState state = GetSceneState (scene);
+
+                if (state == SceneState.Loaded || state == SceneState.Loading)
+                {
+                    Debug.LogWarning ($"Error while loading the scene {scene}. This scene cannot be loaded multiple times.");
+
+                    return;
+                }
+            }
+
+            if (clearHistory)
+            {
+                ClearSceneHistory ();
+            }
+
+            if (addToHistory)
+            {
+                AddToHistory (scene);
+            }
+
+            StartCoroutine (LoadAsync (scene, mode));
         }
 
 
-        internal static void UnloadScene (SceneReference scene)
+        /// <summary>
+        /// Unloads the given scene.
+        /// </summary>
+        internal void UnloadScene (SceneReference scene)
         {
             if (scene == null)
             {
@@ -241,7 +291,75 @@ namespace CB.SceneSystem
                 return;
             }
 
-            instance.StartCoroutine (instance.Unload (scene));
+            SceneState state = GetSceneState (scene);
+
+            if (state != SceneState.Loaded)
+            {
+                Debug.LogWarning ($"Error while unloading the scene {scene}. The given scene is not loaded!");
+
+                return;
+            }
+
+            StartCoroutine (UnloadAsync (scene));
+        }
+
+
+        /// <summary>
+        /// Loads the previous scene.
+        /// Returns true if any previous scene exists.
+        /// </summary>
+        internal bool LoadPreviousScene ()
+        {
+            if (history.Count > 1)
+            {
+                // Remove the current scene.
+                history.RemoveAt (history.Count - 1);
+
+                // Get the reference to the previous scene
+                SceneReference previousScene = history[history.Count - 1];
+                LoadScene (previousScene, LoadSceneMode.Single, previousScene.ClearHistoryOnLoad, false);
+
+                return true;
+            }
+
+            return false;
+        }
+
+
+        /// <summary>
+        /// Set the start scene that will always be the first entry of the history
+        /// </summary>
+        internal void SetStartScene (SceneReference scene)
+        {
+            // Do nothing if the given scene is already the start scene.
+            if (startScene == scene)
+            {
+                return;
+            }
+
+            // Add the given scene to the first entry of the history
+            if (history.Count > 0)
+            {
+                if (history[0] == startScene)
+                {
+                    // The first entry is the current start scene.
+                    // Change the start scene
+                    history[0] = scene;
+                }
+                else
+                {
+                    // The first entry is not the current start scene.
+                    // Add the given scene to the first entry.
+                    history.Insert (0, scene);
+                }
+            }
+            else
+            {
+                // The history is empty so we can add it to the end.
+                history.Add (scene);
+            }
+
+            startScene = scene;
         }
 
         #endregion
@@ -254,6 +372,12 @@ namespace CB.SceneSystem
         /// </summary>
         public static SceneState GetSceneState (SceneReference scene)
         {
+            // prevent the creation of the SceneSystem in Edit mode. 
+            if (!Application.isPlaying)
+            {
+                return SceneState.NotLoaded;
+            }
+
             if (instance.unloadingScenes.Contains (scene))
             {
                 return SceneState.Unloading;
@@ -272,6 +396,36 @@ namespace CB.SceneSystem
             }
 
             return SceneState.NotLoaded;
+        }
+
+
+        /// <summary>
+        /// Clears the scene history
+        /// </summary>
+        public static void ClearHistory ()
+        {
+            // prevent the creation of the SceneSystem in Edit mode. 
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
+            instance.ClearSceneHistory ();
+        }
+
+
+        /// <summary>
+        /// Returns the history of the scene loading.
+        /// </summary>
+        public static SceneReference[] GetHistory ()
+        {
+            // prevent the creation of the SceneSystem in Edit mode. 
+            if (!Application.isPlaying)
+            {
+                return new SceneReference[0];
+            }
+
+            return instance.GetSceneHistory ();
         }
 
         #endregion

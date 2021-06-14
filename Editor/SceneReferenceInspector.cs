@@ -11,12 +11,16 @@ namespace CB.SceneSystem.Editor
     {
         private SerializedProperty scene;
         private SerializedProperty mode;
+        private SerializedProperty addToHistory;
+        private SerializedProperty clearHistoryOnLoad;
 
 
         void OnEnable ()
         {
             scene = serializedObject.FindProperty ("scene");
             mode = serializedObject.FindProperty ("mode");
+            addToHistory = serializedObject.FindProperty ("addToHistory");
+            clearHistoryOnLoad = serializedObject.FindProperty ("clearHistoryOnLoad");
         }
 
 
@@ -27,6 +31,12 @@ namespace CB.SceneSystem.Editor
             EditorGUILayout.PropertyField (scene);
             EditorGUILayout.PropertyField (mode);
 
+            if ((LoadSceneMode) mode.enumValueIndex == LoadSceneMode.Single)
+            {
+                EditorGUILayout.PropertyField (addToHistory);
+                EditorGUILayout.PropertyField (clearHistoryOnLoad);
+            }
+            
             serializedObject.ApplyModifiedProperties ();
 
             // Gui to execute scene loading inside the editor.
