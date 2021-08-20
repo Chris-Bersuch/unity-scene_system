@@ -11,6 +11,9 @@ namespace CB.SceneSystem
         [SerializeField]
         private bool loadOnStart;
 
+        [SerializeField]
+        private SceneReference fallbackScene;
+
 
         [Tooltip ("Is called on loading the previous scene")]
         [SerializeField]
@@ -44,6 +47,13 @@ namespace CB.SceneSystem
             {
                 onLoadPreviousScene?.Invoke ();
                 OnLoadPreviousScene?.Invoke ();
+            }
+            else
+            {
+                if (fallbackScene)
+                {
+                    fallbackScene.Load ();
+                }
             }
         }
     }
